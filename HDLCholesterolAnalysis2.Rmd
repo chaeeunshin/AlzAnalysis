@@ -1,0 +1,190 @@
+---
+title: Analysis of HDL(High-Density Lipoprotein) Cholesterol Level and Cognitive and Functional Assessments
+author: Chaeeun Shin
+output: html_document
+---
+# Introduction
+High level of HDL(High-Density Lipoprotien) cholesterol is associated with an increased risk of dementia. In EDA procedure for this project, it is observed that there are relatively more participants who have diagnosed Alzheimer's disease than un-diagnosed participants for above HDL level of 80 mg/dL.\
+
+The aim of analysis is to evaluate relationship between cognitive and functional assessments and HDL level. Each patient's HDL cholesterol level is labeled into three categories. \
+1. High (higher than 80 mg/dL)\
+2. Optimal (40 mg/dL ~ 80 mg/dL for males, 50 mg/dL ~ 80 mg/dL for females)\
+3. Low (lower than 40 mg/dL for males, lower than 50 mg/dL for females)\
+
+Below are assessments measured in the dataset.\
+**1. MMSE(Mini-Mental State Examination Score): ranges from 0 to 30. Lower scores indicate cognitive impairment.  ** \
+**2. Functional Assessment Score: ranges from 0 to 10. Lower scores indicate greater impairment.  **\
+**3. Memory Complaints: 0 indicates No and 1 indicates Yes.  **\
+**4. Behavioral Problems: 0 indicates No and 1 indicates Yes.  **\
+**5. ADL(Activities of Daily Living Score): ranges from 0 to 10. Lower scores indicate greater impairment.  **\
+
+# 1. Package Install
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+# 2. Load data and brief overview
+```{r}
+data <- read_rds('data.rds')
+p <- ggplot(data, aes(x=CholesterolHDL)) +
+  geom_density(color="black", fill = 'lightblue') +
+  geom_vline(aes(xintercept=80), color = 'blue', linetype = 'dashed', size = 1)
+print(p)
+```
+The figure above shows a density of patient's LDL cholesterol level. Dashed line is 80 mg/dL, where borderline for high HDL cholesterol level. 
+
+# 3. Label HDL cholesterol level into three categories: High, Optimal, Low
+```{r}
+data$HDLlevel <- data$CholesterolHDL
+data$HDLlevel <- case_when(
+  data$HDLlevel > 80 ~ "High",
+  data$Gender == 0 & data$HDLlevel > 50 ~ "Optimal",
+  data$Gender == 1 & data$HDLlevel > 40 ~ "Optimal",
+  data$Gender == 0 & data$HDLlevel < 50 ~ "Low",
+  data$Gender == 1 & data$HDLlevel < 40 ~ "Low"
+)
+t <- table(data$HDLlevel)
+print(t)
+
+low <- data[data$HDLlevel == "Low",]
+optimal <- data[data$HDLlevel == "Optimal",]
+high <- data[data$HDLlevel == "High",]
+```
+In this dataset, 509 participants have high HDL cholesterol concentration. There are 936 participants in optimal group and 704 participants in low group. \
+
+# 4-1. HDL cholesterol and MMSE(Mini-Mental State Examination) Score 
+Null hypothesis: Mean MMSE score among patients with high HDL cholesterol level is lower than among patients with optimal HDL cholesterol level. 
+```{r}
+MMSE_optimal <- optimal$MMSE
+MMSE_high <- high$MMSE
+
+n_optimal <- length(MMSE_optimal)
+n_high <-length(MMSE_high)
+mean_optimal <- mean(MMSE_optimal)
+mean_high <- mean(MMSE_high)
+var_optimal <- var(MMSE_optimal)
+var_high <- var(MMSE_high)
+
+sp <- ((n_optimal-1)*var_optimal+(n_high-1)*var_high)/(n_optimal+n_high-2)
+t0 <- (mean_optimal-mean_high)/sp*sqrt((1/n_optimal)+(1/n_high))
+cv <- qt(0.95,n_optimal+n_high-2)
+
+if (t0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with greater cognitive impairment\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with greater cognitive impairment\n')
+}
+```
+# 4-2. HDL cholesterol and Functional Assessment Score 
+Null Hypothesis: Average functional assessment score among patients with high HDL cholesterol level is lower than among patients with optimal HDL cholesterol level. 
+```{r}
+FA_optimal <- optimal$FunctionalAssessment
+FA_high <- high$FunctionalAssessment
+
+n_optimal <- length(FA_optimal)
+n_high <-length(FA_high)
+mean_optimal <- mean(FA_optimal)
+mean_high <- mean(FA_high)
+var_optimal <- var(FA_optimal)
+var_high <- var(FA_high)
+
+sp <- ((n_optimal-1)*var_optimal+(n_high-1)*var_high)/(n_optimal+n_high-2)
+t0 <- (mean_optimal-mean_high)/sp*sqrt((1/n_optimal)+(1/n_high))
+cv <- qt(0.95,n_optimal+n_high-2)
+
+if (t0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with greater functional impairment\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with greater functional impairment\n')
+}
+```
+
+# 4-3. HDL cholesterol and Presence of Memory Complaints
+Null Hypothesis: The proportion of patients having memory complaints is higher among those with high HDL level than those with optimal HDL level. 
+```{r}
+a <- nrow(high[high$MemoryComplaints==1,])
+b <- nrow(high[high$MemoryComplaints==0,])
+c <- nrow(optimal[optimal$MemoryComplaints==1,])
+d <- nrow(optimal[optimal$MemoryComplaints==0,])
+
+memorycomplaints <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(memorycomplaints) <- c('High HDL', 'Optimal HDL')
+colnames(memorycomplaints) <- c('Memory Complaints', 'No Memory Complaints')
+cat("\nContingency Table:\n")
+print(memorycomplaints)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with presence of memory complaints\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with presence of memory complaints\n')
+}
+```
+# 4-4. HDL cholesterol and Presence of Behavioral Problems
+Null Hypothesis: The proportion of patients having behavioral problems is higher among those with high HDL cholesterol level than those with optimal HDL cholesterol level. 
+```{r}
+a <- nrow(high[high$BehavioralProblems==1,])
+b <- nrow(high[high$BehavioralProblems==0,])
+c <- nrow(optimal[optimal$BehavioralProblems==1,])
+d <- nrow(optimal[optimal$BehavioralProblems==0,])
+
+behavioralproblems <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(behavioralproblems) <- c('High HDL', 'Optimal HDL')
+colnames(behavioralproblems) <- c('Behavioral Problems', 'No Behavioral Problems')
+cat("\nContingency Table:\n")
+print(behavioralproblems)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with presence of behavioral problems\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with presence of behavioral problems\n')
+}
+```
+
+# 4-5. HDL cholesterol and ADL(Activities of Daily Living) Scores
+Null Hypothesis: ADL scores of patients with high HDL cholesterol level is lower than that of patients with optimal HDL cholesterol level. 
+```{r}
+ADL_optimal <- optimal$ADL
+ADL_high <- high$ADL
+
+n_optimal <- length(ADL_optimal)
+n_high <-length(ADL_high)
+mean_optimal <- mean(ADL_optimal)
+mean_high <- mean(ADL_high)
+var_optimal <- var(ADL_optimal)
+var_high <- var(ADL_high)
+
+sp <- ((n_optimal-1)*var_optimal+(n_high-1)*var_high)/(n_optimal+n_high-2)
+t0 <- (mean_optimal-mean_high)/sp*sqrt((1/n_optimal)+(1/n_high))
+cv <- qt(0.95,n_optimal+n_high-2)
+
+if (t0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with greater daily activity impairment\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with greater daily activity impairment\n')
+}
+```
+
+# Conclusion
+It is observed that there is no strong association between high HDL cholesterol level and functional and cognitive impairment. This result suggests that restriction of HDL cholesterol in purpose of prevention of dementia and Alzheimer's disease is not appropriate.  

@@ -1,0 +1,135 @@
+---
+title: "Evaluation of prediction models in diagnosis status of Alzheimer's disease"
+name: Chaeeun Shin
+output: html_document
+---
+
+# Introduction
+The aim of this project is to build three prediction models with different feature selection methods and compare overall performance of each models. Each model predicts diagnosis status of Alzheimer's disease. 
+
+Below are three feature selection methods utilized in this project. 
+**1. Stepwise Selection: AIC/BIC-based  **
+**2. LASSO(Least Absolute Shrinkage Selection Operator  **
+**3. RFE(Recursive Feature Elimination)  **
+
+# Library Installation
+```{r}
+library(MASS)
+library(glmnet)
+library(caret)
+library(Metrics)
+```
+
+# Loading data and train & test sets
+```{r}
+data <- read_rds('data.rds')
+data <- na.omit(data)
+set.seed(123)
+trainIndex <- createDataPartition(data$MMSE, p = 0.8, list = FALSE)
+trainData <- data[trainIndex, ]
+testData <- data[-trainIndex, ]
+```
+
+1. AIC(Akaike Information Criterion)
+```{r}
+full_model <- glm(Diagnosis~., data = data, family = binomial)
+
+best_model_AIC <- stepAIC(full_model, direction = 'both', k = 2)
+model_AIC <- glm(formula(best_model_AIC), data = trainData, family = "binomial")
+
+best_model_BIC <- stepAIC(full_model, direction = 'both', k = log(nrow(data)))
+model_BIC <- glm(formula(best_model_BIC), data = trainData, family = 'binomial')
+
+```
+2. LASSO (Least Absolute Shrinkage and Selection Operator)
+```{r}
+x <- model.matrix(Diagnosis~., data = data)[,-1]
+y <- data$Diagnosis
+
+train_index <- sample(1:nrow(x), size = 0.8 * nrow(x))
+
+x_train <- x[train_index, ]
+y_train <- y[train_index]
+x_test <- x[-train_index, ]
+y_test <- y[-train_index]
+
+lasso_model <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
+best_lambda <- lasso_model$lambda.min
+model_LASSO <- glmnet(x_train, y_train, alpha = 1, lambda = best_lambda, family = "binomial")
+```
+
+3. RFE (Recursive Feature Elimination)
+```{r}
+ctrl <- rfeControl(functions = rfFuncs, method = "cv", number = 10)
+rfe_model <- rfe(
+  x = trainData[, -which(names(trainData) == "Diagnosis")],
+  y = trainData$Diagnosis,
+  sizes = c(1:7),
+  rfeControl = ctrl
+)
+print(rfe_model)
+plot(rfe_model, type = c("g","o"))
+
+selected_features <- rfe_model$optVariables
+model_RFE <- glm(Diagnosis~., data = trainData[, c(selected_features, "Diagnosis")], family = binomial)
+```
+Model Evaluation
+```{r}
+pred_AIC <- predict(model_AIC, newdata = testData)
+pred_AIC <- ifelse(pred_AIC > 0.5, 1, 0)
+pred_BIC <- predict(model_BIC, newdata = testData)
+pred_BIC <- ifelse(pred_BIC > 0.5, 1, 0)
+pred_LASSO <- predict(model_LASSO, s = best_lambda, newx = x_test)
+pred_LASSO <- ifelse(pred_LASSO > 0.5, 1, 0)
+pred_RFE <- predict(model_RFE, newdata = testData[,c( selected_features, "Diagnosis")], family = binomial)
+pred_RFE <- ifelse(pred_RFE > 0.5, 1, 0)
+
+cm_AIC <- confusionMatrix(as.factor(pred_AIC), as.factor( testData$Diagnosis))
+cm_BIC <- confusionMatrix(as.factor(pred_BIC), as.factor(testData$Diagnosis))
+cm_LASSO <- confusionMatrix(as.factor(pred_LASSO), as.factor(y_test))
+cm_RFE <- confusionMatrix(as.factor(pred_RFE), testData$Diagnosis)
+
+acc_AIC <- cm_AIC$overall["Accuracy"]
+acc_BIC <- cm_BIC$overall["Accuracy"]
+acc_LASSO <- cm_LASSO$overall["Accuracy"]
+acc_RFE <- cm_RFE$overall["Accuracy"]
+
+sens_AIC <- cm_AIC$byClass["Sensitivity"]
+sens_BIC <- cm_BIC$byClass["Sensitivity"]
+sens_LASSO <- cm_LASSO$byClass["Sensitivity"]
+sens_RFE <- cm_RFE$byClass["Sensitivity"]
+
+spec_AIC <- cm_AIC$byClass["Specificity"]
+spec_BIC <- cm_BIC$byClass["Specificity"]
+spec_LASSO <- cm_LASSO$byClass["Specificity"]
+spec_RFE <- cm_RFE$byClass["Specificity"]
+
+prec_AIC <- cm_AIC$byClass["Precision"]
+prec_BIC <- cm_BIC$byClass["Precision"]
+prec_LASSO <- cm_LASSO$byClass["Precision"]
+prec_RFE <- cm_RFE$byClass["Precision"]
+
+cat("AIC Model - Confusion Matrix:\n")
+print(cm_AIC$table)
+cat("Accuracy:", acc_AIC, "Sensitivity:", sens_AIC, "Specificity:", spec_AIC, "Precision:", prec_AIC, "\n", "\n")
+
+cat("BIC Model - Confusion Matrix:\n")
+print(cm_BIC$table)
+cat("Accuracy:", acc_BIC, "Sensitivity:", sens_BIC, "Specificity:", spec_BIC, "Precision:", prec_BIC, "\n", "\n")
+
+cat("LASSO Model - Confusion Matrix:\n")
+print(cm_LASSO$table)
+cat("Accuracy:", acc_LASSO, "Sensitivity:", sens_LASSO, "Specificity:", spec_LASSO, "Precision:", prec_LASSO, "\n","\n")
+
+cat("RFE Model - Confusion Matrix:\n")
+print(cm_RFE$table)
+cat("Accuracy:", acc_RFE, "Sensitivity:", sens_RFE, "Specificity:", spec_RFE, "Precision:", prec_RFE, "\n")
+```
+# Conclusion
+In conclusion, all four models provide relatively high accuracy and sensitivity, making them useful for predicting Alzheimer's disease diagnosis. The LASSO model stands out with the highest accuracy and sensitivity, making it particularly effective at identifying cases of Alzheimer's disease. However, it also has the trade-off of lower specificity, which suggests it may produce more false positives compared to other models. The BIC model offers slightly better specificity and overall performance, making it a strong contender for clinical applications where false positives should be minimized.
+
+The RFE model also performs well, providing a balanced trade-off between accuracy, sensitivity, and specificity, making it a viable option for feature selection and model building.
+
+Overall, the LASSO and BIC models appear to be the most promising, depending on the specific needs of the application, with LASSO being preferred if identifying as many Alzheimer's cases as possible is the priority.
+
+Future improvements could involve further tuning of hyperparameters, exploring other feature selection techniques, or integrating additional clinical data to enhance model robustness.

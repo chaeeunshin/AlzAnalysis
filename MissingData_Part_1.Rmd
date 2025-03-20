@@ -1,0 +1,10 @@
+---
+title: "Analysis of MCAR(Missing Completely At Random) data in prediction of functional assessment scores"
+name: Chaeeun Shin
+output: html_document
+---
+
+# Overview
+If probability of data being missing is the same for all cases, then the data are said to be missing completely at random(MCAR). This effectively implies that causes of the missing data are unrelated to the data. 
+
+The purpose of this analysis is to investigate any accuracy in functional assessment score prediction. 

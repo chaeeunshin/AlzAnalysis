@@ -1,0 +1,214 @@
+---
+title: Analysis of HDL(High-Density Lipoprotein) Cholesterol Level and Symptoms in Dementia and Alzheimer's Disease. 
+author: Chaeeun Shin
+output: html_document
+---
+# Introduction
+High level of HDL(High-Density Lipoprotien) cholesterol is associated with an increased risk of dementia. In EDA procedure for this project, it is observed that there are relatively more participants who have diagnosed Alzheimer's disease than un-diagnosed participants for above HDL level of 80 mg/dL. \
+
+The aim of this analysis is to evaluate relationship between development of symptoms and level of HDL cholesterol. Each patient's HDL cholesterol level is labeled into three categories. \
+1. High (higher than 80 mg/dL) \
+2. Optimal (40 mg/dL ~ 80 mg/dL for males, 50 mg/dL ~ 80 mg/dL for females) \
+3. Low (lower than 40 mg/dL for males, lower than 50 mg/dL for females) \ 
+
+Below are symptoms used in this analysis. \
+**1. Confusion**\
+**2. Disorientation**\
+**3. Personality Changes**\
+**4. Difficulty in Completing Tasks**\
+**5. Forgetfulness**\
+
+# 1. Package Install
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+# 2. Load data and brief overview 
+```{r}
+data <- read_rds('data.rds')
+p <- ggplot(data, aes(x=CholesterolHDL)) +
+  geom_density(color="black", fill = 'lightblue') +
+  geom_vline(aes(xintercept=80), color = 'blue', linetype = 'dashed', size = 1)
+print(p)
+```
+The figure displayed shows a density of patient's LDL cholesterol level with blue line where indicates borderline for high HDL cholesterol concentration. 
+
+# 3.Label HDL cholesterol level into three categories: High, Optimal, Low
+```{r}
+data$HDLlevel <- data$CholesterolHDL
+data$HDLlevel <- case_when(
+  data$HDLlevel > 80 ~ "High",
+  data$Gender == 0 & data$HDLlevel > 50 ~ "Optimal",
+  data$Gender == 1 & data$HDLlevel > 40 ~ "Optimal",
+  data$Gender == 0 & data$HDLlevel < 50 ~ "Low",
+  data$Gender == 1 & data$HDLlevel < 40 ~ "Low"
+)
+t <- table(data$HDLlevel)
+print(t)
+
+low <- data[data$HDLlevel == "Low",]
+optimal <- data[data$HDLlevel == "Optimal",]
+high <- data[data$HDLlevel == "High",]
+```
+In this dataset, 509 participants have high HDL cholesterol concentration. There are 936 participants in optimal group and 704 participants in low group.
+
+# 4-1. HDL Cholesterol and Presence of Confusion
+Null Hypothesis: The proportion of developing confusion among participants whose HDL cholesterol density is greater than 80 mg/dL is equal to the proportion among participants whose HDL cholesterol density is lower than 80 mg/dL.
+```{r}
+a <- nrow(high[high$Confusion==1,])
+b <- nrow(high[high$Confusion==0,])
+c <- nrow(optimal[optimal$Confusion==1,])
+d <- nrow(optimal[optimal$Confusion==0,])
+
+confusion <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(confusion) <- c('HDL above 80 mg/dL', 'HDL below 80 mg/dL')
+colnames(confusion) <- c('Confusion', 'No confusion')
+cat("\nContingency Table:\n")
+print(confusion)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with development of confusion\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with development of confusion\n')
+}
+```
+
+# 4-2.HDL Cholesterol and Presence of Disorientation  
+Null Hypothesis: The participants with high HDL cholesterol density are equally likely to have disorientation than the patients with optimal HDL cholesterol density.  
+```{r}
+a <- nrow(high[high$Disorientation==1,])
+b <- nrow(high[high$Disorientation==0,])
+c <- nrow(optimal[optimal$Disorientation==1,])
+d <- nrow(optimal[optimal$Disorientation==0,])
+
+disorientation <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(disorientation) <- c('HDL above 80 mg/dL', 'HDL below 80 mg/dL')
+colnames(disorientation) <- c('Disorientation', 'Disorientation')
+cat("\nContingency Table:\n")
+print(disorientation)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with development of disorientation\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with development of disorientation\n')
+}
+```
+
+# 4-3. HDL Cholesterol and Presence of Personality Changes  
+Null Hypothesis: The participants with high HDL cholesterol density are equally likely to have personality changes than the patients with optimal HDL cholesterol density.  
+```{r}
+a <- nrow(high[high$PersonalityChanges==1,])
+b <- nrow(high[high$PersonalityChanges==0,])
+c <- nrow(optimal[optimal$PersonalityChanges==1,])
+d <- nrow(optimal[optimal$PersonalityChanges==0,])
+
+personalitychanges <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(personalitychanges) <- c('HDL above 80 mg/dL', 'HDL below 80 mg/dL')
+colnames(personalitychanges) <- c('Personality changes', 'No personality changes')
+cat("\nContingency Table:\n")
+print(personalitychanges)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with personality changes\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with personality changes\n')
+}
+```
+
+# 4-4.HDL Cholesterol and Difficulty in Completing Tasks  
+Null Hypothesis: The participants with high HDL cholesterol density are equally likely to have difficulty in completing tasks than the patients with optimal HDL cholesterol density.  
+```{r}
+a <- nrow(high[high$DifficultyCompletingTasks==1,])
+b <- nrow(high[high$DifficultyCompletingTasks==0,])
+c <- nrow(optimal[optimal$DifficultyCompletingTasks==1,])
+d <- nrow(optimal[optimal$DifficultyCompletingTasks==0,])
+
+diffcompletingtasks <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(diffcompletingtasks) <- c('HDL above 80 mg/dL', 'HDL below 80 mg/dL')
+colnames(diffcompletingtasks) <- c('Difficulty in completing tasks', 'No difficulty in completing tasks')
+cat("\nContingency Table:\n")
+print(diffcompletingtasks)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with difficulty in completing tasks\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with difficulty in completing tasks\n')
+}
+```
+
+# 4-5. HDL Cholesterol and Presence of Forgetfulness
+Null Hypothesis: The participants with high HDL cholesterol density are equally likely to develop forgetfulness than the participants with optimal HDL cholesterol density.  
+Hypothesis Testing  
+```{r}
+a <- nrow(high[high$Forgetfulness==1,])
+b <- nrow(high[high$Forgetfulness==0,])
+c <- nrow(optimal[optimal$Forgetfulness==1,])
+d <- nrow(optimal[optimal$Forgetfulness==0,])
+
+forgetfulness <- matrix(c(a,b,c,d),nrow=2,byrow=T)
+rownames(forgetfulness) <- c('HDL above 80 mg/dL', 'HDL below 80 mg/dL')
+colnames(forgetfulness) <- c('Forgetfulness', 'No forgetfulness')
+cat("\nContingency Table:\n")
+print(forgetfulness)
+
+n1 <- a+b
+n2 <- c+d
+
+p1 <- a/(a+b)
+p2 <- c/(c+d)
+
+S <- sqrt((p1*(1-p1)/n1)+(p2*(1-p2)/n2))
+z0 <- (p1-p2)/S
+cv <- qnorm(0.95)
+
+if (z0>cv) {
+  cat('Reject null hypothesis: High HDL cholesterol level is associated with development of forgetfulness\n')
+} else {
+  cat('Accept null hypothesis: High HDL cholesterol level is not associated with development of forgetfulness\n')
+}
+```
+
+# Conclusion
+The test concludes that the high density of HDL cholesterol is not significantly associated with development of five major symptoms. This result suggest that restriction of HDL cholesterol to prevent development symptoms in dementia or Alzheimer's disease is not appropriate. 
